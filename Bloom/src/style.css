@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease-in-out, transform 0.6s ease-in-out, max-height 0.3s ease-in-out;
+  max-height: 100px; /* Altura aproximada del campo */
+  overflow: hidden;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+  max-height: 0px;
+}
+
+/* Estilos para la transición de los iconos del botón */
+.fade-icon-enter-active,
+.fade-icon-leave-active {
+  transition: opacity 0.3s ease;
+}
+.fade-icon-enter-from,
+.fade-icon-leave-to {
+  opacity: 0;
+}
+
+/* Reutilizando el estilo del botón que ya tenías */
+.gradient-button {
+  position: relative;
+  z-index: 1;
+  background: linear-gradient(to right, #4079ff, #40ffaa);
+  color: white;
+  transition: all 0.3s ease-in-out;
+}
+.gradient-button:hover {
+  background: white;
+  color: #18181b;
+}
+.gradient-button:hover .text-black {
+  color: #18181b; /* Asegura que el "+" se vea en el hover */
+}
+.gradient-button::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: linear-gradient(to right, #4079ff, #40ffaa);
+  border-radius: inherit;
+  z-index: -1;
+  padding: 2px;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+}
+.gradient-button:hover::before {
+  opacity: 1;
+}
