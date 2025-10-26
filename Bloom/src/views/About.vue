@@ -43,15 +43,7 @@
         
             <p class="text-white font-medium mt-4 text-lg">{{ member.role }}</p>
         
-            <a 
-              :href="member.cvUrl" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              class="gradient-button mt-2 w-full max-w-[150px] py-2 px-4 flex items-center justify-center gap-2 rounded-full"
-            >
-              <Icon icon="mdi:file-document-outline" />
-              <span>Ver CV</span>
-            </a>
+            
         
           </div> 
         
@@ -81,36 +73,37 @@ export default {
           id: 1, 
           name: 'Rodrigo Macias', 
           role: 'Developer', 
-          imageUrl: new URL('@/assets/Rodrigo.png', import.meta.url).href,          
-          cvUrl: '/cvs/Rodrigo.pdf'
+          imageUrl: new URL('@/assets/Rodrigo.png', import.meta.url).href
         },
         { 
           id: 2, 
           name: 'Manuel Mijares', 
-          role: 'Developer', 
-          imageUrl: new URL('@/assets/Manolo.png', import.meta.url).href,          
-          cvUrl: '/cvs/Manuel.pdf'
+          role: 'Developer (no llegó, anda malo)', 
+          imageUrl: new URL('@/assets/Manolo.png', import.meta.url).href
         },
         { 
           id: 3, 
           name: 'Segio Lopez', 
           role: 'Developer', 
-          imageUrl: new URL('@/assets/Cheko.png', import.meta.url).href,          
-          cvUrl: '/cvs/Sergio.pdf'
+          imageUrl: new URL('@/assets/Cheko.png', import.meta.url).href
         },
         { 
           id: 4, 
           name: 'Diego Requejo', 
           role: 'Developer', 
-          imageUrl: new URL('@/assets/Dieguin.png', import.meta.url).href,          
-          cvUrl: '/cvs/Diego.pdf'
+          imageUrl: new URL('@/assets/Dieguin.png', import.meta.url).href
         },
         { 
           id: 5, 
           name: 'Enzo', 
           role: 'Project Manager', 
-          imageUrl: new URL('@/assets/Chencho.png', import.meta.url).href,          
-          cvUrl: 'no tiene, es el mero mero'
+          imageUrl: new URL('@/assets/Chencho.png', import.meta.url).href
+        },
+        { 
+          id: 6, 
+          name: 'Axel Vázquez', 
+          role: 'Developer', 
+          imageUrl: new URL('@/assets/Axel.png', import.meta.url).href
         }
       ]
     };

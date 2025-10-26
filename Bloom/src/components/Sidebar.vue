@@ -88,11 +88,10 @@ export default {
       expanded: false,
       isReportModalOpen: false, 
       mainMenu: [
-        { icon: "line-md:star-twotone", label: "Registrar Reseña", link: "/Reviews" },
+        { icon: "line-md:star-twotone", label: "Registrar reseña", link: "/Reviews" },
         { icon: "line-md:text-box-multiple", label: "Resumenes", link: "/Summaries" },
         { icon: "line-md:link", label: "Marketing", link: "/Marketing" },
       ],
-      // Base del menú del footer (sin la cuenta)
       footerMenuBase: [ 
         { icon: "line-md:person-search-twotone", label: "Acerca de", link: "/about" },
         { icon: "line-md:alert-circle-twotone-loop", label: "Reportar", action: 'openReportModal' }, 
@@ -101,22 +100,17 @@ export default {
     };
   },
   computed: {
-    // Mapea el estado 'user' del store a this.user
     ...mapState(useAuthStore, ['user']),
 
-    // Construye dinámicamente el menú del footer completo
     footerMenu() {
       const menu = [];
-      // Solo añade el item de cuenta si el usuario está cargado
       if (this.user) {
         menu.push({
           label: this.user.name, 
           link: "/account", 
-          // Usa la imagen del usuario o una imagen por defecto
           imageUrl: this.user.profile_image_url || 'https://via.placeholder.com/150' 
         });
       }
-      // Concatena con el resto de los items
       return menu.concat(this.footerMenuBase);
     }
   },
@@ -130,12 +124,10 @@ export default {
     closeReportModal() {
       this.isReportModalOpen = false;
     },
-    // Método para cerrar sesión llamando al store
     logout() {
       const authStore = useAuthStore();
       authStore.logout();
     },
-    // Manejador genérico para las acciones
     handleAction(actionName) {
       if (typeof this[actionName] === 'function') {
         this[actionName]();
@@ -148,7 +140,6 @@ export default {
 </script>
 
 <style scoped>
-/* Tus estilos no necesitan cambios */
 .fade-blur-enter-active,
 .fade-leave-active {
   transition: all 0.4s ease-in-out;
