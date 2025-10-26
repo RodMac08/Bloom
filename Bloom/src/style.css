@@ -23,7 +23,6 @@
   opacity: 0;
 }
 
-/* Reutilizando el estilo del botón que ya tenías */
 .gradient-button {
   position: relative;
   z-index: 1;
@@ -36,7 +35,7 @@
   color: #18181b;
 }
 .gradient-button:hover .text-black {
-  color: #18181b; /* Asegura que el "+" se vea en el hover */
+  color: #18181b; 
 }
 .gradient-button::before {
   content: '';

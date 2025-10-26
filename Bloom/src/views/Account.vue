@@ -105,9 +105,9 @@
 import Layout from '../components/Layout.vue';
 import { Icon } from '@iconify/vue';
 import { mapState } from 'pinia';
-import { ref } from 'vue'; // ref se usa dentro de setup
+import { ref } from 'vue'; 
 import { useAuthStore } from '../stores/auth';
-import apiClient from '../services/api'; // Importa apiClient
+import apiClient from '../services/api'; 
 
 export default {
   name: "Account",
@@ -148,24 +148,20 @@ export default {
     }
   },
   setup() {
-    const fileInput = ref(null); // Referencia al input
+    const fileInput = ref(null); 
 
-    // Método para abrir el selector
     const openFilePicker = () => {
       fileInput.value?.click();
     };
 
-    // Retornamos para que la plantilla pueda usarlos
     return { fileInput, openFilePicker };
   },
   methods: {
-    // Método para manejar el cambio de archivo (MOVIDO AQUÍ)
     async handleFileChange(event) {
       const file = event.target.files?.[0];
       if (!file) return;
 
       console.log("Archivo seleccionado:", file);
-      // Obtenemos el store DENTRO del método
       const authStore = useAuthStore();
       try {
         await authStore.uploadAvatar(file);
@@ -173,28 +169,24 @@ export default {
       } catch (error) {
         alert('Error al subir la foto: ' + (error.response?.data?.error || error.message));
       } finally {
-        // Limpiar el input usando $refs
         if (this.$refs.fileInput) {
            this.$refs.fileInput.value = '';
         }
       }
     },
-    // Tus otros métodos
     async updateProfile() {
       if (!this.form.name.trim()) {
         alert('El nombre no puede estar vacío.');
         return;
       }
-      this.isUpdatingProfile = true; // Deshabilita el botón (opcional)
-      const authStore = useAuthStore(); // Obtiene la instancia del store
+      this.isUpdatingProfile = true;
+      const authStore = useAuthStore(); 
 
       try {
-        // Llama al endpoint PUT /users/me
         const response = await apiClient.put('/users/me', {
-          name: this.form.name.trim() // Envía solo el nombre
+          name: this.form.name.trim() 
         });
 
-        // Actualiza el estado global en Pinia con la respuesta del backend
         authStore.user = response.data;
 
         alert('Perfil actualizado con éxito.');
@@ -202,15 +194,11 @@ export default {
       } catch (error) {
         console.error('Error al actualizar el perfil:', error);
         alert('No se pudo actualizar el perfil: ' + (error.response?.data?.error || error.message));
-        // Opcional: Revertir el cambio en el formulario si falló
-        // this.form.name = authStore.user?.name || '';
       } finally {
-        this.isUpdatingProfile = false; // Rehabilita el botón
+        this.isUpdatingProfile = false; 
       }
     },
-    // --- MÉTODO changePassword ACTUALIZADO ---
   async changePassword() {
-    // 1. Validaciones básicas en el frontend
     if (!this.passwordForm.current || !this.passwordForm.new || !this.passwordForm.confirm) {
       alert('Por favor, completa todos los campos de contraseña.');
       return;
@@ -219,32 +207,23 @@ export default {
       alert('Las nuevas contraseñas no coinciden.');
       return;
     }
-    // Opcional: Añadir validación de longitud/complejidad para la nueva contraseña
 
-    // 2. Estado de carga (opcional)
-    // this.isChangingPassword = true; // Necesitarías añadir 'isChangingPassword: false' en data()
 
     try {
-      // 3. Llamada a la API
       const response = await apiClient.put('/users/me/password', {
         current: this.passwordForm.current,
         new: this.passwordForm.new,
-        // No necesitamos enviar 'confirm', el backend confía en la validación del frontend
       });
 
-      // 4. Manejo de éxito
       alert(response.data.message || 'Contraseña actualizada correctamente.'); // Muestra mensaje del backend
-      // Limpiar el formulario
       this.passwordForm.current = '';
       this.passwordForm.new = '';
       this.passwordForm.confirm = '';
 
     } catch (error) {
-      // 5. Manejo de errores
       console.error('Error al cambiar la contraseña:', error);
       alert('No se pudo cambiar la contraseña: ' + (error.response?.data?.error || error.message));
     } finally {
-      // this.isChangingPassword = false; // Desactiva el estado de carga
     }
     },
     deleteAccount() {

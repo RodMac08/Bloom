@@ -1,5 +1,3 @@
-// backend/routes/auth.js
-
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -8,22 +6,17 @@ require('dotenv').config();
 
 const router = express.Router();
 
-// --- RUTA DE REGISTRO ---
 router.post('/register', async (req, res) => {
   try {
-    // 1. Obtenemos los datos del cuerpo de la petición
     const { businessName, userName, email, password } = req.body;
 
-    // 2. Hasheamos la contraseña
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 3. Creamos el negocio
     const newBusiness = await Business.create({
       name: businessName,
       subscription_plan: 'seed'
     });
 
-    // 4. Creamos el usuario, asociándolo con el negocio
     const newUser = await User.create({
       name: userName,
       email: email,
@@ -31,14 +24,12 @@ router.post('/register', async (req, res) => {
       business_id: newBusiness.id
     });
 
-    // 5. Generamos el token DESPUÉS de crear el usuario
     const token = jwt.sign(
       { userId: newUser.id, businessId: newBusiness.id },
-      process.env.JWT_SECRET, // Usamos la clave del .env
+      process.env.JWT_SECRET, 
       { expiresIn: '24h' }
     );
     
-    // 6. Enviamos la respuesta
     res.status(201).json({
       message: 'Usuario registrado con éxito',
       token,
@@ -56,7 +47,6 @@ router.post('/register', async (req, res) => {
 });
 
 
-// --- RUTA DE LOGIN ---
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -71,10 +61,9 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Contraseña incorrecta.' });
     }
 
-    // Generamos el token usando la clave del .env
     const token = jwt.sign(
       { userId: user.id, businessId: user.business_id },
-      process.env.JWT_SECRET, // Usamos la clave del .env
+      process.env.JWT_SECRET, 
       { expiresIn: '24h' }
     );
     

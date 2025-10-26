@@ -1,6 +1,5 @@
-// backend/routes/marketing.js
 const express = require('express');
-const auth = require('../middleware/auth'); // El guardián de seguridad
+const auth = require('../middleware/auth'); 
 const { MarketingIdea } = require('../models');
 
 const router = express.Router();
@@ -11,7 +10,7 @@ router.get('/', auth, async (req, res) => {
 
     const ideas = await MarketingIdea.findAll({
       where: { business_id: businessId },
-      order: [['createdAt', 'DESC']] // Mostrar las más nuevas primero
+      order: [['createdAt', 'DESC']] 
     });
 
     res.status(200).json(ideas);

@@ -29,6 +29,10 @@ const Review = sequelize.define('Review', {
     type: DataTypes.TEXT,
     allowNull: false,
   },
+  audio_url: { // <-- NUEVO CAMPO
+    type: DataTypes.STRING,
+    allowNull: true // Permite que esté vacío al inicio
+  }
 }, {
   tableName: 'reviews',
   timestamps: true,

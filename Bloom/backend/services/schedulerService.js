@@ -1,90 +1,194 @@
-// backend/services/schedulerService.js
-
 const cron = require('node-cron');
 const { Op } = require('sequelize');
-const { Review, MarketingIdea, Business } = require('../models');
-const { generatePromoIdea, generatePromoImage } = require('./aiService');
+const { Business, SnackRating, InventoryRecommendation, Review, MarketingIdea } = require('../models');
+const { generateInventoryRecommendations, generateMarketingTextIdea, generateReviewAudio } = require('./aiService');
+const { uploadFileToGCS } = require('./storageService');
 
-// Función auxiliar para crear una pausa
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-async function generateWeeklyMarketingIdeas() {
-  console.log('⏰ Ejecutando tarea semanal de generación de marketing...');
-
+async function generateWeeklyInventoryInsights() {
+  console.log('⏰ Ejecutando tarea semanal de insights de inventario...');
   try {
     const today = new Date();
-    // Ajusta para buscar reseñas de los últimos 7 días desde AHORA, 
-    // no necesariamente la semana pasada exacta, más útil para pruebas.
-    const sevenDaysAgo = new Date(today.setDate(today.getDate() - 7)); 
+    const sevenDaysAgo = new Date(new Date().setDate(today.getDate() - 7));
+    console.log(`Buscando valoraciones de snacks desde ${sevenDaysAgo.toISOString()}`);
 
-    console.log(`Buscando reseñas positivas desde ${sevenDaysAgo.toISOString()}`);
+    const allRecentSnackRatings = await SnackRating.findAll({
+      where: { createdAt: { [Op.gte]: sevenDaysAgo } },
+      attributes: ['business_id', 'snack_name', 'rating'],
+    });
+
+    if (allRecentSnackRatings.length === 0) {
+      console.log('No hay valoraciones de snacks recientes. Omitiendo generación de insights.');
+      return;
+    }
+
+    const ratingsByBusiness = allRecentSnackRatings.reduce((acc, rating) => {
+        const businessId = rating.business_id;
+        const snackName = rating.snack_name;
+        const score = rating.rating;
+        if (!snackName || typeof score !== 'number' || score < 1 || score > 5) {
+            console.warn(`Valoración inválida encontrada: Snack=${snackName}, Rating=${score}. Omitiendo.`);
+            return acc;
+        }
+        acc[businessId] = acc[businessId] || {};
+        acc[businessId][snackName] = acc[businessId][snackName] || { totalScore: 0, count: 0 };
+        acc[businessId][snackName].totalScore += score;
+        acc[businessId][snackName].count++;
+        return acc;
+    }, {});
+    
+    const avgRatingsByBusiness = {};
+    for (const businessId in ratingsByBusiness) {
+        avgRatingsByBusiness[businessId] = {};
+        for (const snackName in ratingsByBusiness[businessId]) {
+            const data = ratingsByBusiness[businessId][snackName];
+            if (data.count > 0) {
+                 avgRatingsByBusiness[businessId][snackName] = (data.totalScore / data.count).toFixed(1);
+            }
+        }
+    }
+
+    const businessCount = Object.keys(avgRatingsByBusiness).length;
+    if (businessCount === 0) {
+        console.log('No se pudieron calcular promedios válidos para insights. Omitiendo.');
+        return;
+    }
+    console.log(`Encontrados datos promediados de snacks para ${businessCount} negocios.`);
+
+    for (const businessId in avgRatingsByBusiness) {
+      const currentBusinessId = parseInt(businessId, 10);
+      if (isNaN(currentBusinessId) || Object.keys(avgRatingsByBusiness[businessId]).length === 0) continue;
+
+      console.log(`Procesando insights para negocio ID: ${currentBusinessId}`);
+      const snackRatings = avgRatingsByBusiness[businessId];
+
+      try {
+        const recommendations = await generateInventoryRecommendations(snackRatings);
+        console.log(`   Recomendaciones generadas para negocio ${currentBusinessId}:`, JSON.stringify(recommendations, null, 2));
+
+        await InventoryRecommendation.create({
+          business_id: currentBusinessId,
+          recommendations: recommendations,
+          generated_at: new Date()
+        });
+        console.log(`   Recomendaciones guardadas en BD para negocio ${currentBusinessId}.`);
+        await delay(2000); 
+
+      } catch (innerError) {
+         console.error(`❌ Error generando/guardando recomendación para negocio ${currentBusinessId}:`, innerError.message);
+      }
+    }
+    console.log('✅ Tarea semanal de insights de inventario completada.');
+  } catch (error) {
+    console.error('❌ Error durante la tarea semanal de insights:', error);
+  }
+}
+
+async function generateWeeklyMarketingIdeas() {
+  console.log('💡 Ejecutando tarea semanal de generación de marketing (SOLO TEXTO)...');
+  try {
+    const today = new Date();
+    const sevenDaysAgo = new Date(new Date().setDate(today.getDate() - 7));
+    console.log(`Buscando reseñas positivas (generales) desde ${sevenDaysAgo.toISOString()}`);
 
     const businessesToProcess = await Business.findAll({
       include: [{
-        model: Review,
+        model: Review, 
         where: {
-          rating: { [Op.gte]: 4 },
-          createdAt: { [Op.gte]: sevenDaysAgo } // Usamos la nueva fecha
+          rating: { [Op.gte]: 4 }, 
+          createdAt: { [Op.gte]: sevenDaysAgo }
         },
-        required: true 
+        required: true
       }]
     });
 
     if (businessesToProcess.length === 0) {
-       console.log('No hay negocios con reseñas positivas recientes. Omitiendo generación.');
+       console.log('No hay negocios con reseñas positivas recientes para marketing.');
        return;
     }
-
-    console.log(`Encontrados ${businessesToProcess.length} negocios para procesar.`);
+    console.log(`Encontrados ${businessesToProcess.length} negocios para marketing.`);
 
     for (const business of businessesToProcess) {
-      console.log(`Procesando negocio ID: ${business.id}`);
+      const currentBusinessId = business.id;
+      console.log(`Procesando marketing para negocio ID: ${currentBusinessId}`);
       const reviewsText = business.Reviews.map(r => r.text).join(' ');
-      
-      // Generamos hasta 5 ideas (o menos si hay pocas reseñas)
-      const ideasToGenerate = Math.min(5, business.Reviews.length); 
-      console.log(`Generando ${ideasToGenerate} ideas...`);
+      const ideasToGenerate = Math.min(3, business.Reviews.length); 
+      console.log(`Generando ${ideasToGenerate} ideas de texto de marketing...`);
 
       for (let i = 0; i < ideasToGenerate; i++) {
         try {
-          const productName = "nuestro producto estrella"; 
-          const promoDetails = await generatePromoIdea(reviewsText, productName);
-          console.log(`   Idea ${i+1} generada: ${promoDetails.promo_name}`);
-
-          const imageUrl = await generatePromoImage(promoDetails, productName);
-          console.log(`   Imagen ${i+1} generada.`);
+          const productName = "nuestro producto/servicio"; 
+          const marketingIdea = await generateMarketingTextIdea(reviewsText, productName); 
+          console.log(`   Idea de marketing ${i+1} generada: ${marketingIdea.title}`);
 
           await MarketingIdea.create({
-            business_id: business.id,
-            title: promoDetails.promo_name,
-            content: `${promoDetails.offer_text} - Válido ${promoDetails.day}`,
-            product_name: productName,
-            image_url: imageUrl,
+            business_id: currentBusinessId,
+            title: marketingIdea.title,
+            content: marketingIdea.content,
+            product_name: marketingIdea.product_name,
+            image_url: null, 
           });
-
-          // --- AÑADIR PAUSA AQUÍ ---
-          // Espera 10 segundos antes de la siguiente iteración para no saturar la API
-          // Puedes ajustar este tiempo (ej. 5000ms = 5s) si sigue fallando.
-          console.log('   Esperando 65 segundos antes de la siguiente generación...');
-          await delay(65000); 
-          // ------------------------
+          console.log(`   Idea de marketing guardada para negocio ${currentBusinessId}.`);
+          await delay(2000);
 
         } catch (innerError) {
-           console.error(`❌ Error generando idea/imagen ${i+1} para negocio ${business.id}:`, innerError.message);
-           // Continúa con la siguiente iteración aunque una falle
+           console.error(`❌ Error generando idea de marketing ${i+1} para negocio ${currentBusinessId}:`, innerError.message);
         }
       }
     }
-    console.log('✅ Tarea semanal completada.');
+    console.log('✅ Tarea semanal de marketing (solo texto) completada.');
   } catch (error) {
-    console.error('❌ Error durante la tarea semanal:', error);
+    console.error('❌ Error durante la tarea semanal de marketing:', error);
   }
 }
 
-// ... (startScheduler y module.exports sin cambios) ...
-function startScheduler() {
-  cron.schedule('0 1 * * 0', generateWeeklyMarketingIdeas);
-  console.log('Servicio de tareas programadas iniciado.');
+async function processReviewAudio() {
+  console.log('🎧 Buscando reseñas nuevas para generar audio...');
+  try {
+    const reviewsToProcess = await Review.findAll({
+      where: {
+        audio_url: null, 
+        createdAt: { [Op.gte]: new Date(new Date() - 24 * 60 * 60 * 1000) } 
+      },
+      limit: 5 
+    });
+
+    if (reviewsToProcess.length === 0) {
+      console.log('No hay reseñas nuevas para procesar audio.');
+      return;
+    }
+    console.log(`Encontradas ${reviewsToProcess.length} reseñas para generar audio.`);
+
+    for (const review of reviewsToProcess) {
+      try {
+        const audioBuffer = await generateReviewAudio(review.text, review.rating);
+        const destination = `review-audio/review_${review.id}.mp3`; 
+        const publicUrl = await uploadFileToGCS(audioBuffer, destination, 'audio/mpeg'); 
+        await review.update({ audio_url: publicUrl });
+        console.log(`   Audio para reseña ${review.id} guardado: ${publicUrl}`);
+        await delay(5000);
+
+      } catch (audioError) {
+        console.error(`❌ Error procesando audio para reseña ${review.id}:`, audioError.message);
+      }
+    }
+  } catch (error) {
+    console.error('❌ Error general en la tarea de audio:', error);
+  }
 }
 
-module.exports = { startScheduler, generateWeeklyMarketingIdeas };
+function startScheduler() {
+  cron.schedule('0 1 * * 0', generateWeeklyInventoryInsights);
+  cron.schedule('0 2 * * 0', generateWeeklyMarketingIdeas); 
+  cron.schedule('*/5 * * * *', processReviewAudio); 
+
+  console.log('Servicios programados iniciados (Inventario, Marketing Texto y Audio Reseñas).');
+}
+
+module.exports = { 
+  startScheduler, 
+  generateWeeklyInventoryInsights, 
+  generateWeeklyMarketingIdeas, 
+  processReviewAudio 
+};

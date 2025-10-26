@@ -16,7 +16,7 @@ const User = sequelize.define('User', {
   email: {
     type: DataTypes.STRING,
     allowNull: false,
-    unique: true, // El email debe ser único
+    unique: true, 
   },
   password_hash: {
     type: DataTypes.STRING,
@@ -24,12 +24,12 @@ const User = sequelize.define('User', {
   },
   profile_image_url: {
     type: DataTypes.STRING,
-    allowNull: true, // Puede ser nulo
+    allowNull: true, 
   },
-  business_id: { // Clave foránea que lo conecta con un negocio
+  business_id: { 
     type: DataTypes.INTEGER,
     references: {
-      model: 'businesses', // Nombre de la tabla de Businesses
+      model: 'businesses',
       key: 'id',
     }
   }

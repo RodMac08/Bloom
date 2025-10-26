@@ -1,78 +1,101 @@
 // backend/services/aiService.js
 const { VertexAI } = require('@google-cloud/vertexai');
+require('dotenv').config();
+const { ElevenLabsClient } = require("elevenlabs");
 
-// INICIALIZACIÓN
 const vertex_ai = new VertexAI({
-  project: 'bloom-475315', // Tu ID de proyecto
+  project: 'bloom-475315', 
   location: 'us-central1',
 });
-
-// Modelo de Texto (usando el modelo que encontraste)
-const generativeModel = vertex_ai.getGenerativeModel({
-  model: 'gemini-2.0-flash-lite-001',
-});
-
-// Modelo de Imagen (Imagen 2)
-const imageModel = vertex_ai.getGenerativeModel({
-  model: 'imagegeneration@005',
-});
-
-// FUNCIÓN 1: Genera la oferta con Gemini (MODIFICADA)
-async function generatePromoIdea(reviewsText, productName) {
-  // Se añaden instrucciones más explícitas para evitar el formato Markdown
-  const prompt = `Analiza estas reseñas positivas de clientes sobre "${productName}": "${reviewsText}".
-  Genera una idea para una promoción semanal simple.
-  Devuélveme SOLAMENTE el objeto JSON con este formato exacto: {"promo_name": "Nombre Creativo", "offer_text": "Texto de la Oferta", "day": "Día de la Semana"}. NO incluyas ninguna explicación ni formato markdown.`;
+const generativeModel = vertex_ai.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
+const imageModel = vertex_ai.getGenerativeModel({ model: 'imagegeneration@005' });
+const elevenlabs = new ElevenLabsClient({ apiKey: process.env.ELEVENLABS_API_KEY });
+// Uso de la api de Gemini para generar recomendaciones de inventario, challenge
+async function generateInventoryRecommendations(snackRatings) {
+  let ratingDataString = "Datos de valoración promedio de snacks (escala 1-5 estrellas):\n";
+  for (const snackName in snackRatings) {
+    ratingDataString += `- ${snackName}: ${snackRatings[snackName]} estrellas\n`;
+  }
+  const prompt = `
+Eres un asistente de optimización de inventario para gategroup...
+${ratingDataString}
+Basándote en las valoraciones promedio...
+Devuelve tu recomendación ÚNICAMENTE como un objeto JSON...`;
 
   try {
     const resp = await generativeModel.generateContent(prompt);
-    const rawResponse = resp.response.candidates[0].content.parts[0].text;
-
-    // --- LÓGICA PARA EXTRAER EL JSON DE FORMA SEGURA ---
-    // Busca el inicio y el fin del bloque JSON dentro de ```json ... ```
+    let rawResponse = resp.response.candidates[0].content.parts[0].text;
     const jsonMatch = rawResponse.match(/```json\s*([\s\S]*?)\s*```/);
     let jsonString;
-
     if (jsonMatch && jsonMatch[1]) {
-      // Si encuentra el bloque Markdown, extrae solo el contenido
       jsonString = jsonMatch[1].trim();
     } else {
-      // Si no hay bloque Markdown, intenta limpiar la respuesta directamente
       jsonString = rawResponse.trim();
     }
-    // ----------------------------------------------------
-
-    return JSON.parse(jsonString); // Ahora parsea la cadena limpia
-
+    return JSON.parse(jsonString);
   } catch (error) {
-    console.error("Error al generar o parsear la idea (Gemini):", error);
-    // Loguea la respuesta cruda si falla el parseo para facilitar la depuración
-    if (resp) {
-       console.error("Respuesta cruda de la IA que causó el error:", resp.response.candidates[0].content.parts[0].text);
+    console.error("Error al generar recomendación de inventario (Gemini):", error);
+    if (typeof resp !== 'undefined' && resp?.response?.candidates?.[0]?.content?.parts?.[0]?.text) {
+       console.error("Respuesta cruda de la IA:", resp.response.candidates[0].content.parts[0].text);
     }
-    throw new Error("No se pudo generar o parsear la idea de promoción.");
+    throw new Error("No se pudo generar la recomendación de inventario.");
   }
 }
-
-// FUNCIÓN 2: Genera la imagen con Imagen 2 (sin cambios)
-async function generatePromoImage(promoDetails, productName) {
-  const prompt = `Crea un gráfico publicitario para redes sociales, estilo moderno y limpio. La imagen principal debe ser un "${productName}" delicioso.
-  Superpón este texto grande: "${promoDetails.offer_text}".
-  Debajo, más pequeño, añade: "${promoDetails.day}".`;
+// funcion para el Challenge ElevenLabs
+async function generateReviewAudio(text, rating) {
+  const voiceId = "21m00Tcm4TlvDq8ikWAM";
+  let stability = 0.5, similarity_boost = 0.75, style_exaggeration = 0.0;
+  if (rating >= 4) { stability = 0.3; style_exaggeration = 0.7; }
+  else if (rating <= 2) { stability = 0.59; style_exaggeration = 0.1; }
 
   try {
-    const resp = await imageModel.generateContent({
-      prompt: prompt,
-      number_of_images_to_generate: 1
-    });
-
-    const imageData = resp.response.predictions[0];
-    // Devolvemos la imagen en formato base64
-    return `data:image/png;base64,${imageData.bytesBase64Encoded}`;
+    console.log(`   Generando audio para reseña (Rating: ${rating})...`);
+    const audio = await elevenlabs.generate({ /* ... config ... */ });
+    const chunks = [];
+    for await (const chunk of audio) { chunks.push(chunk); }
+    const content = Buffer.concat(chunks);
+    console.log("   Audio generado exitosamente.");
+    return content;
   } catch (error) {
-    console.error("Error al generar imagen (Imagen 2):", error);
-    throw error;
+    console.error("Error al generar audio (ElevenLabs):", error);
+    throw new Error("No se pudo generar el audio de la reseña.");
   }
 }
 
-module.exports = { generatePromoIdea, generatePromoImage };
+async function generateMarketingTextIdea(reviewsText, productName) {
+  const prompt = `Analiza estas reseñas POSITIVAS de clientes sobre "${productName}": "${reviewsText}".
+  Genera UNA idea concisa para una publicación en redes sociales (Instagram/Facebook).
+  Devuelve SOLAMENTE un objeto JSON con este formato exacto: {"title": "Título Atractivo", "content": "Texto corto y llamativo para la publicación.", "product_name": "${productName}"}.
+  NO incluyas explicaciones ni markdown.`;
+
+  let resp; 
+  try {
+    resp = await generativeModel.generateContent(prompt);
+    let rawResponse = resp.response.candidates[0].content.parts[0].text;
+
+    const jsonMatch = rawResponse.match(/```json\s*([\s\S]*?)\s*```/);
+    let jsonString;
+    if (jsonMatch && jsonMatch[1]) {
+      jsonString = jsonMatch[1].trim();
+    } else {
+      jsonString = rawResponse.trim();
+       if (jsonString.startsWith('```')) jsonString = jsonString.slice(3).trim();
+       if (jsonString.endsWith('```')) jsonString = jsonString.slice(0, -3).trim();
+    }
+
+    return JSON.parse(jsonString);
+
+  } catch (error) {
+    console.error("Error al generar idea de marketing (Gemini):", error);
+    if (typeof resp !== 'undefined' && resp?.response?.candidates?.[0]?.content?.parts?.[0]?.text) {
+       console.error("Respuesta cruda de la IA:", resp.response.candidates[0].content.parts[0].text);
+    }
+    throw new Error("No se pudo generar o parsear la idea de marketing.");
+  }
+}
+
+module.exports = {
+  generateInventoryRecommendations,
+  generateReviewAudio,
+  generateMarketingTextIdea,
+};

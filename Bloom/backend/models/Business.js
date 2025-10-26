@@ -1,5 +1,3 @@
-// backend/models/Business.js
-
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
@@ -18,9 +16,8 @@ const Business = sequelize.define('Business', {
     defaultValue: 'seed',
   }
 }, {
-  // Opciones adicionales
-  tableName: 'businesses', // Nombre explícito de la tabla
-  timestamps: true, // Sequelize añadirá createdAt y updatedAt automáticamente
+  tableName: 'businesses', 
+  timestamps: true, 
 });
 
 

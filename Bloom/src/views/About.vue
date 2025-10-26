@@ -1,5 +1,5 @@
 <template>
-  <Layout title="Acerca del Proyecto" :showButton="false" :showSidebar="true" :showBackground="true">
+  <Layout title="Acerca del proyecto" :showButton="false" :showSidebar="true" :showBackground="true">
     <div class="p-4 md:p-8">
 
       <div class="mb-12">

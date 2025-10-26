@@ -27,7 +27,6 @@
         >
           <div class="flex flex-col w-full h-full justify-between font-bold text-white">
             
-            <img :src="idea.image_url" alt="Propuesta de marketing" class="w-full h-48 object-cover">
             
             <div class="p-5 flex flex-col flex-1">
               <div class="flex flex-col gap-2 justify-center items-center text-center mb-4">
@@ -54,7 +53,7 @@
 import Layout from '../components/Layout.vue';
 import { Icon } from '@iconify/vue';
 import SpotlightCard from '../components/SpotlightCard.vue';
-import apiClient from '../services/api'; // 1. Importar nuestro servicio de API
+import apiClient from '../services/api'; 
 
 export default {
   name: 'Marketing',
@@ -63,23 +62,21 @@ export default {
     Icon,
     SpotlightCard
   },
-  // 2. Añadir 'data' para el estado
   data() {
     return {
-      ideas: [], // Array para guardar las ideas de la API
-      loading: true, // Estado de carga
+      ideas: [], 
+      loading: true, 
     };
   },
-  // 3. Hook 'mounted' para llamar a la API al cargar
   async mounted() {
     try {
       const response = await apiClient.get('/marketing');
-      this.ideas = response.data; // Guardamos los datos
+      this.ideas = response.data; 
     } catch (error) {
       console.error('Error al obtener las ideas de marketing:', error);
       alert('No se pudieron cargar las propuestas.');
     } finally {
-      this.loading = false; // Ocultamos el mensaje de carga
+      this.loading = false; 
     }
   }
 }

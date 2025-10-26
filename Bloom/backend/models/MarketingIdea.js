@@ -11,10 +11,10 @@ const MarketingIdea = sequelize.define('MarketingIdea', {
   title: { type: DataTypes.STRING, allowNull: false },
   content: { type: DataTypes.TEXT, allowNull: false },
   product_name: { type: DataTypes.STRING },
-  image_url: { type: DataTypes.STRING, allowNull: false }, // URL de la imagen generada
+  image_url: { type: DataTypes.STRING, allowNull: true }, 
 }, {
   tableName: 'marketing_ideas',
-  timestamps: true, // Guarda createdAt y updatedAt
+  timestamps: true,
 });
 
 module.exports = MarketingIdea;

@@ -4,16 +4,14 @@ const auth = require('../middleware/auth');
 const upload = require('../middleware/upload');
 const { uploadFileToGCS } = require('../services/storageService');
 const { User } = require('../models');
-const bcrypt = require('bcryptjs'); // <--- 1. IMPORTAR BCRYPT
+const bcrypt = require('bcryptjs');
 
 const router = express.Router();
 
-// GET /api/users/me
 router.get('/me', auth, (req, res) => {
   res.status(200).json(req.user);
 });
 
-// PUT /api/users/me/avatar
 router.put('/me/avatar', auth, upload.single('avatar'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No se subió ningún archivo.' });
@@ -34,7 +32,6 @@ router.put('/me/avatar', auth, upload.single('avatar'), async (req, res) => {
   }
 });
 
-// PUT /api/users/me
 router.put('/me', auth, async (req, res) => {
   try {
     const { name } = req.body;
@@ -50,10 +47,9 @@ router.put('/me', auth, async (req, res) => {
   } catch (error) {
     console.error('Error al actualizar el perfil:', error);
     res.status(500).json({ error: 'Hubo un error al actualizar el perfil.' });
-  } // <--- 2. AÑADIR LA LLAVE DE CIERRE QUE FALTABA
-}); // <--- Y CERRAR CORRECTAMENTE LA RUTA
+  } 
+}); 
 
-// PUT /api/users/me/password
 router.put('/me/password', auth, async (req, res) => {
   try {
     const { current: currentPassword, new: newPassword } = req.body;
@@ -68,13 +64,11 @@ router.put('/me/password', auth, async (req, res) => {
       return res.status(404).json({ error: 'Usuario no encontrado.' });
     }
 
-    // Usar bcrypt (ahora importado)
     const isMatch = await bcrypt.compare(currentPassword, user.password_hash);
     if (!isMatch) {
       return res.status(400).json({ error: 'La contraseña actual es incorrecta.' });
     }
 
-    // Usar bcrypt (ahora importado)
     const hashedNewPassword = await bcrypt.hash(newPassword, 10);
 
     await User.update({ password_hash: hashedNewPassword }, {

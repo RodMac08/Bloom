@@ -9,7 +9,7 @@
             <form @submit.prevent="handleSubmit" class="space-y-6">
               
               <GradientText
-                text="Reportar un Problema"
+                text="Reportar un problema"
                 :colors="['#4079ff', '#40ffaa', '#4079ff']"
                 :animation-speed="5"
                 class-name="text-3xl font-bold text-center p-2"
@@ -108,7 +108,7 @@ export default {
           this.isSent = false;
           this.errorType = '';
           this.description = '';
-          this.close(); // Cierra el modal después de enviar
+          this.close(); 
         }, 2000);
       }, 1500);
     }
@@ -125,7 +125,6 @@ export default {
 .fade-leave-to {
   opacity: 0;
 }
-/* Estilos para la transición de los iconos del botón */
 .fade-icon-enter-active,
 .fade-icon-leave-active {
   transition: opacity 0.3s ease;

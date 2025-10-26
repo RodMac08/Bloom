@@ -1,24 +1,21 @@
-// backend/middleware/checkReviewLimit.js
-
 const { planLimits } = require('../config');
-const Review = require('../models/Review'); // Asumiendo un modelo de reseña
-const { Op } = require('sequelize'); // Para queries de fecha
+const Review = require('../models/Review');
+const { Op } = require('sequelize'); 
 
 async function checkReviewLimit(req, res, next) {
-  // Solo aplicamos el límite al plan 'seed'
   if (req.business.subscription_plan !== 'seed') {
     return next();
   }
 
   const startDate = new Date();
-  startDate.setDate(1); // Primer día del mes
+  startDate.setDate(1);
   startDate.setHours(0, 0, 0, 0);
 
   const reviewCount = await Review.count({
     where: {
       business_id: req.business.id,
       created_at: {
-        [Op.gte]: startDate // "gte" = mayor o igual que
+        [Op.gte]: startDate
       }
     }
   });
