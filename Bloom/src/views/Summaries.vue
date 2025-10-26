@@ -21,7 +21,7 @@
         <div v-if="loadingRecommendations" class="text-center text-zinc-400 py-4">Cargando recomendaciones...</div>
         <div v-else-if="recommendations" class="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
           <div>
-            <h3 class="font-semibold text-green-400 mb-2">✅ Priorizar Compra (>= 4.0 ★)</h3>
+            <h3 class="font-semibold text-green-400 mb-2">✅ Priorizar compra (>= 4.0 ★)</h3>
             <ul v-if="recommendations.prioritize_purchase?.length > 0" class="list-none p-0 text-zinc-300 text-sm space-y-1">
               <li v-for="snack in recommendations.prioritize_purchase" :key="snack + '-prio'">{{ snack }}</li>
             </ul>
@@ -35,7 +35,7 @@
             <p v-else class="text-zinc-500 text-sm">Ninguno esta semana.</p>
           </div>
           <div>
-            <h3 class="font-semibold text-red-400 mb-2">❌ Considerar Reemplazo (< 3.0 ★)</h3>
+            <h3 class="font-semibold text-red-400 mb-2">❌ Considerar reemplazo (< 3.0 ★)</h3>
             <ul v-if="recommendations.consider_replacement?.length > 0" class="list-none p-0 text-zinc-300 text-sm space-y-1">
               <li v-for="snack in recommendations.consider_replacement" :key="snack + '-repl'">{{ snack }}</li>
             </ul>
@@ -46,7 +46,7 @@
       </div>
 
       <div>
-        <h2 class="text-2xl font-bold text-white text-center mb-4">Historial de Reseñas</h2>
+        <h2 class="text-2xl font-bold text-white text-center mb-4">Historial de reseñas</h2>
         <div class="mb-8 flex items-center justify-center gap-4">
           <button
             v-for="filter in filters"
