@@ -1,7 +1,7 @@
 const cron = require('node-cron');
 const { Op } = require('sequelize');
 const { Business, SnackRating, InventoryRecommendation, Review, MarketingIdea } = require('../models');
-const { generateInventoryRecommendations, generateMarketingTextIdea, generateReviewAudio } = require('./aiService');
+const { generateInventoryRecommendations, generateMarketingTextIdea, generateReviewAudio, generateAggregatedSummary} = require('./aiService');
 const { uploadFileToGCS } = require('./storageService');
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -83,6 +83,61 @@ async function generateWeeklyInventoryInsights() {
   } catch (error) {
     console.error('❌ Error durante la tarea semanal de insights:', error);
   }
+}
+
+async function generateSummaryAudios() {
+  console.log('🔊 Ejecutando tarea de generación de audios de resumen...');
+  try {
+    const today = new Date();
+    const sevenDaysAgo = new Date(new Date().setDate(today.getDate() - 7));
+
+    const businesses = await Business.findAll({ include: [Review] }); // Trae todos los negocios con sus reseñas
+
+    for (const business of businesses) {
+      const recentReviews = business.Reviews.filter(r => new Date(r.createdAt) >= sevenDaysAgo);
+      const positiveReviews = recentReviews.filter(r => r.rating >= 4);
+      const negativeReviews = recentReviews.filter(r => r.rating <= 2);
+
+      let positiveAudioUrl = null;
+      let negativeAudioUrl = null;
+
+      // Generar audio para resumen positivo
+      if (positiveReviews.length > 0) {
+        try {
+          const positiveSummaryText = await generateAggregatedSummary(positiveReviews, 'positivas');
+          const positiveAudioBuffer = await generateReviewAudio(positiveSummaryText, 4); // Usamos 4 para tono positivo
+          const destination = `summary-audio/business_${business.id}_positive_${Date.now()}.mp3`;
+          positiveAudioUrl = await uploadFileToGCS(positiveAudioBuffer, destination, 'audio/mpeg');
+          console.log(`   Audio resumen positivo generado para negocio ${business.id}`);
+        } catch (err) { console.error(`Error generando audio positivo para ${business.id}:`, err.message); }
+      } else { console.log(`   Sin reseñas positivas recientes para negocio ${business.id}`); }
+
+      // Generar audio para resumen negativo
+      if (negativeReviews.length > 0) {
+        try {
+          const negativeSummaryText = await generateAggregatedSummary(negativeReviews, 'negativas');
+          const negativeAudioBuffer = await generateReviewAudio(negativeSummaryText, 2); // Usamos 2 para tono más serio
+          const destination = `summary-audio/business_${business.id}_negative_${Date.now()}.mp3`;
+          negativeAudioUrl = await uploadFileToGCS(negativeAudioBuffer, destination, 'audio/mpeg');
+          console.log(`   Audio resumen negativo generado para negocio ${business.id}`);
+        } catch (err) { console.error(`Error generando audio negativo para ${business.id}:`, err.message); }
+      } else { console.log(`   Sin reseñas negativas recientes para negocio ${business.id}`); }
+
+      // Guardar URLs en la tabla Businesses (¡Añade estas columnas a tu modelo!)
+      if (positiveAudioUrl || negativeAudioUrl) {
+        await Business.update(
+          {
+            latest_positive_summary_audio_url: positiveAudioUrl,
+            latest_negative_summary_audio_url: negativeAudioUrl
+          },
+          { where: { id: business.id } }
+        );
+         console.log(`   URLs de audio actualizadas para negocio ${business.id}`);
+      }
+      await delay(5000); // Pausa entre negocios
+    }
+    console.log('✅ Tarea de audios de resumen completada.');
+  } catch (error) { console.error('❌ Error en tarea de audios de resumen:', error); }
 }
 
 async function generateWeeklyMarketingIdeas() {
@@ -182,7 +237,7 @@ function startScheduler() {
   cron.schedule('0 1 * * 0', generateWeeklyInventoryInsights);
   cron.schedule('0 2 * * 0', generateWeeklyMarketingIdeas); 
   cron.schedule('*/5 * * * *', processReviewAudio); 
-
+  cron.schedule('0 3 * * *', generateSummaryAudios);
   console.log('Servicios programados iniciados (Inventario, Marketing Texto y Audio Reseñas).');
 }
 
@@ -190,5 +245,6 @@ module.exports = {
   startScheduler, 
   generateWeeklyInventoryInsights, 
   generateWeeklyMarketingIdeas, 
-  processReviewAudio 
+  processReviewAudio,
+  generateSummaryAudios
 };

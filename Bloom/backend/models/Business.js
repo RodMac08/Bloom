@@ -14,6 +14,14 @@ const Business = sequelize.define('Business', {
   subscription_plan: {
     type: DataTypes.ENUM('seed', 'flourish', 'orchard'),
     defaultValue: 'seed',
+  },
+  latest_positive_summary_audio_url: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  latest_negative_summary_audio_url: {
+    type: DataTypes.STRING,
+    allowNull: true,
   }
 }, {
   tableName: 'businesses', 
